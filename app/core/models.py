@@ -10,6 +10,7 @@ class UserManager(BaseUserManager):
         user = self.model(email=self.normalize_email(email), **extra_fields)
         user.set_password(password) #separately because password needs to be encrypted
         user.save(using=self._db) #using... is to support multiple databases
+        #create profile
         return user
 
     def create_superuser(self, email, password=None): #no worry about extra fields, as it is created by command line
@@ -23,7 +24,8 @@ class UserManager(BaseUserManager):
 class User(AbstractBaseUser, PermissionsMixin):
     """Custom user model that supports using email instead of username"""
     email = models.EmailField(max_length=264, unique=True) #unique so to create one user for one email
-    name = models.CharField(max_length=264)
+    firstName = models.CharField(max_length=264)
+    lastName = models.CharField(max_length=264)
     is_active = models.BooleanField(default=True) #is user is active/online or not
     is_staff = models.BooleanField(default=False) #if staff, create user with special command
 
