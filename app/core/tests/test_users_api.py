@@ -8,6 +8,7 @@ from rest_framework import status
 
 CREATE_USER_URL = reverse('users:create')
 TOKEN_URL = reverse('users:token')
+ME_URL = reverse('users:me')
 
 def create_user(**params): #dynamic list of arguments
     return get_user_model().objects.create_user(**params)
@@ -83,3 +84,47 @@ class PublicUserApiTests(TestCase):
 
         self.assertNotIn('token', res.data)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_retrieve_user_unauthorized(self):
+        """Test that authentication is required for users"""
+        res = self.client.get(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class PrivateUserApiTests(TestCase):
+    """Test API requests that require authentication"""
+
+    def setUp(self):
+        self.user = create_user(
+            email='test2@nu.edu.kz',
+            password='testpass',
+            firstName='name',
+            lastName='lastName'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)#authenticate any request that our client makes with our sample user
+
+    def test_retrieve_profile_success(self):
+        """Test retrieving profile for logged in user"""
+        res = self.client.get(ME_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data, {'firstName':self.user.firstName, 'email':self.user.email, 'lastName':self.user.lastName})
+
+    def test_post_me_not_allowed(self):
+        """Test that POST is not allowed on the ME_URL"""
+        res= self.client.post(ME_URL, {})
+
+        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_update_user_profile(self):
+        """Test updating the user profile for authenticated user"""
+        res= self.client.patch(ME_URL, {'password': 'newpass', 'lastName': 'newLast'})
+
+        self.user.refresh_from_db() #update user data
+
+        self.assertEqual(self.user.lastName, 'newLast')
+        self.assertTrue(self.user.check_password('newpass'))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+
